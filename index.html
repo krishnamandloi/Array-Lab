@@ -1998,12 +1998,15 @@ function toast(text){
 }
 
 function arr(id){
+ const el=document.getElementById(id);
+ if(!el) return [];
+ return el.value.split(",")
+  .map(x=>x.trim())
+  .filter(x=>x!=="");
+}
 
- return document.getElementById(id)
- .value.split(",")
- .map(x=>x.trim())
- .filter(x=>x!=="");
-
+function numericArray(id){
+ return arr(id).map(Number).filter(Number.isFinite);
 }
 
 function render(id,array,active=-1,type=""){
@@ -2229,216 +2232,74 @@ function resetAddress(){
    INSERTION - STEP ENGINE
 ========================================================== */
 
-let insertState={
- array:[],
- value:"",
- pos:0,
- current:null,
- done:false,
- shifts:0,
- steps:0
-};
+let insertState={array:[],value:"",pos:0,current:null,done:false,shifts:0,steps:0};
 
 function resetInsert(){
-
+ clearInterval(window.insertTimer);
+ const a=arr("insertArray");
  insertState={
-  array:arr("insertArray"),
-  value:document.getElementById("insertValue").value,
+  array:a.slice(),
+  value:document.getElementById("insertValue").value.trim(),
   pos:Number(document.getElementById("insertPosition").value),
-  current:null,
-  done:false,
-  shifts:0,
-  steps:0
+  current:null,done:false,shifts:0,steps:0
  };
-
- render(
-  "insertArrayView",
-  insertState.array
- );
-
- document.getElementById("insertSize")
- .textContent=insertState.array.length;
-
- document.getElementById("insertStep")
- .textContent="0";
-
- document.getElementById("insertShifts")
- .textContent="0";
-
- document.getElementById("insertLog")
- .innerHTML=`
- <div class="step">
-  <span class="step-number">✓</span>
-  Ready for simulation.
- </div>
- `;
-
+ render("insertArrayView",insertState.array);
+ document.getElementById("insertSize").textContent=insertState.array.length;
+ document.getElementById("insertStep").textContent="0";
+ document.getElementById("insertShifts").textContent="0";
+ document.getElementById("insertLog").innerHTML='<div class="step"><span class="step-number">✓</span> Ready for simulation.</div>';
 }
 
 function insertStart(){
-
  resetInsert();
-
  const s=insertState;
-
- if(
-  !Number.isInteger(s.pos) ||
-  s.pos<0 ||
-  s.pos>s.array.length
- ){
-
-  toast("Invalid insertion position.");
-  return;
-
- }
-
+ if(s.array.length===0){toast("Enter at least one array element.");return false;}
+ if(s.value===""){toast("Enter a value to insert.");return false;}
+ if(!Number.isInteger(s.pos)||s.pos<0||s.pos>s.array.length){toast("Position must be from 0 to array length.");return false;}
  s.current=s.array.length;
-
- document.getElementById("insertLog")
- .innerHTML=`
- <div class="step">
-  <span class="step-number">1</span>
-  Start insertion of
-  <b>${s.value}</b>
-  at index
-  <b>${s.pos}</b>.
- </div>
- `;
-
+ document.getElementById("insertLog").innerHTML=`<div class="step"><span class="step-number">1</span> Start insertion of <b>${s.value}</b> at index <b>${s.pos}</b>.</div>`;
  toast("Insertion simulation started.");
-
+ return true;
 }
 
 function insertNext(){
-
  const s=insertState;
-
- if(s.current===null){
-  insertStart();
-  return;
- }
-
- if(s.done){
-  toast("Simulation completed.");
-  return;
- }
-
+ if(s.current===null){ if(!insertStart()) return; return; }
+ if(s.done){toast("Simulation completed.");return;}
  s.steps++;
-
  if(s.current>s.pos){
-
-  s.array[s.current]=
-   s.array[s.current-1];
-
+  const moved=s.array[s.current-1];
+  s.array[s.current]=moved;
   s.shifts++;
-
-  render(
-   "insertArrayView",
-   s.array,
-   s.current
-  );
-
-  document.getElementById("insertLog")
-  .innerHTML+=`
-   <div class="step">
-    <span class="step-number">${s.steps}</span>
-    Shift
-    <b>${s.array[s.current]}</b>
-    from index
-    ${s.current-1}
-    →
-    ${s.current}
-   </div>
-  `;
-
+  render("insertArrayView",s.array,s.current);
+  document.getElementById("insertLog").innerHTML+=`<div class="step"><span class="step-number">${s.steps}</span> Shift <b>${moved}</b> from index ${s.current-1} → ${s.current}</div>`;
   s.current--;
-
- }
- else{
-
+ }else{
   s.array[s.pos]=s.value;
-
   s.done=true;
-
-  document.getElementById("insertArray")
-  .value=s.array.join(",");
-
-  render(
-   "insertArrayView",
-   s.array,
-   s.pos,
-   "success"
-  );
-
-  document.getElementById("insertLog")
-  .innerHTML+=`
-   <div class="step">
-    <span class="step-number">✓</span>
-    Insert
-    <b>${s.value}</b>
-    at index
-    <b>${s.pos}</b>.
-   </div>
-
-   <div class="step">
-    <span class="step-number">✓</span>
-    Final array:
-    <b>[${s.array.join(", ")}]</b>
-   </div>
-  `;
-
-  operation("Array Insertion");
-
-  toast("Insertion completed.");
-
+  document.getElementById("insertArray").value=s.array.join(",");
+  document.getElementById("insertPosition").value=s.pos;
+  render("insertArrayView",s.array,s.pos,"success");
+  document.getElementById("insertLog").innerHTML+=`<div class="step"><span class="step-number">✓</span> Insert <b>${s.value}</b> at index <b>${s.pos}</b>.</div><div class="step"><span class="step-number">✓</span> Final array: <b>[${s.array.join(", ")}]</b></div>`;
+  operation("Array Insertion"); toast("Insertion completed.");
  }
-
- document.getElementById("insertSize")
- .textContent=s.array.length;
-
- document.getElementById("insertStep")
- .textContent=s.steps;
-
- document.getElementById("insertShifts")
- .textContent=s.shifts;
-
+ document.getElementById("insertSize").textContent=s.array.length;
+ document.getElementById("insertStep").textContent=s.steps;
+ document.getElementById("insertShifts").textContent=s.shifts;
 }
 
 function insertAuto(){
-
- insertStart();
-
+ if(!insertStart()) return;
  clearInterval(window.insertTimer);
-
- window.insertTimer=setInterval(()=>{
-
-  insertNext();
-
-  if(insertState.done)
-   clearInterval(window.insertTimer);
-
- },650);
-
+ window.insertTimer=setInterval(()=>{insertNext();if(insertState.done)clearInterval(window.insertTimer);},650);
 }
 
 function randomInsert(){
-
- let a=[];
-
- for(let i=0;i<6;i++)
-  a.push(Math.floor(Math.random()*90)+10);
-
- document.getElementById("insertArray")
- .value=a.join(",");
-
- document.getElementById("insertPosition")
- .value=Math.floor(Math.random()*a.length);
-
- document.getElementById("insertValue")
- .value=Math.floor(Math.random()*90)+10;
-
+ const a=Array.from({length:6},()=>Math.floor(Math.random()*90)+10);
+ document.getElementById("insertArray").value=a.join(",");
+ document.getElementById("insertPosition").value=Math.floor(Math.random()*(a.length+1));
+ document.getElementById("insertValue").value=Math.floor(Math.random()*90)+10;
  resetInsert();
-
 }
 
 resetInsert();
@@ -2448,190 +2309,56 @@ resetInsert();
    DELETION
 ========================================================== */
 
-let deleteState={
- array:[],
- pos:0,
- current:null,
- done:false,
- shifts:0,
- steps:0
-};
+let deleteState={array:[],pos:0,current:null,done:false,shifts:0,steps:0};
 
 function resetDelete(){
-
- deleteState={
-  array:arr("deleteArray"),
-  pos:Number(document.getElementById("deletePosition").value),
-  current:null,
-  done:false,
-  shifts:0,
-  steps:0
- };
-
- render(
-  "deleteArrayView",
-  deleteState.array
- );
-
- document.getElementById("deleteSize")
- .textContent=deleteState.array.length;
-
- document.getElementById("deleteStep")
- .textContent="0";
-
- document.getElementById("deleteShifts")
- .textContent="0";
-
- document.getElementById("deleteLog")
- .innerHTML=`
- <div class="step">
-  <span class="step-number">✓</span>
-  Ready for deletion.
- </div>
- `;
-
+ clearInterval(window.deleteTimer);
+ const a=arr("deleteArray");
+ deleteState={array:a.slice(),pos:Number(document.getElementById("deletePosition").value),current:null,done:false,shifts:0,steps:0};
+ render("deleteArrayView",deleteState.array);
+ document.getElementById("deleteSize").textContent=deleteState.array.length;
+ document.getElementById("deleteStep").textContent="0";
+ document.getElementById("deleteShifts").textContent="0";
+ document.getElementById("deleteLog").innerHTML='<div class="step"><span class="step-number">✓</span> Ready for deletion.</div>';
 }
 
 function deleteStart(){
-
  resetDelete();
-
  const s=deleteState;
-
- if(
-  !Number.isInteger(s.pos) ||
-  s.pos<0 ||
-  s.pos>=s.array.length
- ){
-
-  toast("Invalid deletion position.");
-  return;
-
- }
-
+ if(s.array.length===0){toast("Enter at least one array element.");return false;}
+ if(!Number.isInteger(s.pos)||s.pos<0||s.pos>=s.array.length){toast("Position must be within the array.");return false;}
  s.current=s.pos;
-
- document.getElementById("deleteLog")
- .innerHTML=`
- <div class="step">
-  <span class="step-number">1</span>
-  Selected
-  <b>${s.array[s.pos]}</b>
-  at index
-  <b>${s.pos}</b>.
- </div>
- `;
-
+ document.getElementById("deleteLog").innerHTML=`<div class="step"><span class="step-number">1</span> Selected <b>${s.array[s.pos]}</b> at index <b>${s.pos}</b>.</div>`;
+ return true;
 }
 
 function deleteNext(){
-
  const s=deleteState;
-
- if(s.current===null){
-  deleteStart();
-  return;
- }
-
- if(s.done){
-  toast("Simulation completed.");
-  return;
- }
-
+ if(s.current===null){if(!deleteStart())return;return;}
+ if(s.done){toast("Simulation completed.");return;}
  s.steps++;
-
  if(s.current<s.array.length-1){
-
-  s.array[s.current]=
-   s.array[s.current+1];
-
-  s.shifts++;
-
-  render(
-   "deleteArrayView",
-   s.array,
-   s.current
-  );
-
-  document.getElementById("deleteLog")
-  .innerHTML+=`
-   <div class="step">
-    <span class="step-number">${s.steps}</span>
-    Shift
-    <b>${s.array[s.current]}</b>
-    from
-    ${s.current+1}
-    →
-    ${s.current}
-   </div>
-  `;
-
+  const moved=s.array[s.current+1];
+  s.array[s.current]=moved; s.shifts++;
+  render("deleteArrayView",s.array,s.current);
+  document.getElementById("deleteLog").innerHTML+=`<div class="step"><span class="step-number">${s.steps}</span> Shift <b>${moved}</b> from ${s.current+1} → ${s.current}</div>`;
   s.current++;
-
+ }else{
+  const removed=s.array.pop(); s.done=true;
+  document.getElementById("deleteArray").value=s.array.join(",");
+  render("deleteArrayView",s.array,Math.min(s.pos,Math.max(0,s.array.length-1)),"danger");
+  document.getElementById("deleteLog").innerHTML+=`<div class="step"><span class="step-number">✓</span> Remove duplicate last element <b>${removed}</b>.</div><div class="step"><span class="step-number">✓</span> Final array: <b>[${s.array.join(", ")}]</b></div>`;
+  operation("Array Deletion"); toast("Deletion completed.");
  }
- else{
-
-  const removed=s.array.pop();
-
-  s.done=true;
-
-  document.getElementById("deleteArray")
-  .value=s.array.join(",");
-
-  render(
-   "deleteArrayView",
-   s.array,
-   Math.max(0,s.pos),
-   "danger"
-  );
-
-  document.getElementById("deleteLog")
-  .innerHTML+=`
-   <div class="step">
-    <span class="step-number">✓</span>
-    Remove last duplicate element
-    <b>${removed}</b>.
-   </div>
-
-   <div class="step">
-    <span class="step-number">✓</span>
-    Final array:
-    <b>[${s.array.join(", ")}]</b>
-   </div>
-  `;
-
-  operation("Array Deletion");
-
-  toast("Deletion completed.");
-
- }
-
- document.getElementById("deleteSize")
- .textContent=s.array.length;
-
- document.getElementById("deleteStep")
- .textContent=s.steps;
-
- document.getElementById("deleteShifts")
- .textContent=s.shifts;
-
+ document.getElementById("deleteSize").textContent=s.array.length;
+ document.getElementById("deleteStep").textContent=s.steps;
+ document.getElementById("deleteShifts").textContent=s.shifts;
 }
 
 function deleteAuto(){
-
- deleteStart();
-
+ if(!deleteStart())return;
  clearInterval(window.deleteTimer);
-
- window.deleteTimer=setInterval(()=>{
-
-  deleteNext();
-
-  if(deleteState.done)
-   clearInterval(window.deleteTimer);
-
- },650);
-
+ window.deleteTimer=setInterval(()=>{deleteNext();if(deleteState.done)clearInterval(window.deleteTimer);},650);
 }
 
 resetDelete();
@@ -2651,7 +2378,7 @@ let linearState={
 };
 
 function resetLinear(){
-
+ clearInterval(window.linearTimer);
  linearState={
   array:arr("linearArray"),
   target:String(
@@ -2685,9 +2412,9 @@ function resetLinear(){
 }
 
 function linearStart(){
-
  resetLinear();
-
+ if(linearState.array.length===0){toast("Enter at least one array element.");return false;}
+ if(linearState.target===""){toast("Enter a search target.");return false;}
  linearState.running=true;
 
  document.getElementById("linearLog")
@@ -2812,9 +2539,7 @@ function linearNext(){
 }
 
 function linearAuto(){
-
- linearStart();
-
+ if(!linearStart())return;
  clearInterval(window.linearTimer);
 
  window.linearTimer=setInterval(()=>{
@@ -2846,14 +2571,14 @@ let binaryState={
 };
 
 function resetBinary(){
-
+ clearInterval(window.binaryTimer);
  binaryState={
-  array:arr("binaryArray").map(Number),
+  array:numericArray("binaryArray"),
   target:Number(
    document.getElementById("binaryTarget").value
   ),
   low:0,
-  high:arr("binaryArray").length-1,
+  high:numericArray("binaryArray").length-1,
   running:false,
   done:false,
   count:0
@@ -2886,13 +2611,14 @@ function isSorted(a){
 }
 
 function binaryStart(){
-
  resetBinary();
-
+ if(binaryState.array.length===0){toast("Enter a sorted numeric array.");return false;}
+ if(binaryState.array.some(n=>!Number.isFinite(n))){toast("Binary Search requires numeric values.");return false;}
+ if(!Number.isFinite(binaryState.target)){toast("Enter a numeric target.");return false;}
  if(!isSorted(binaryState.array)){
 
   toast("Binary Search requires a sorted array.");
-  return;
+  return false;
 
  }
 
@@ -2906,6 +2632,7 @@ function binaryStart(){
   <b>${binaryState.target}</b>
  </div>
  `;
+ return true;
 
 }
 
@@ -3037,9 +2764,7 @@ function binaryNext(){
 }
 
 function binaryAuto(){
-
- binaryStart();
-
+ if(!binaryStart())return;
  clearInterval(window.binaryTimer);
 
  window.binaryTimer=setInterval(()=>{
@@ -3328,6 +3053,11 @@ function clearHistory(){
  toast("History cleared.");
 
 }
+
+window.addEventListener("error",e=>{
+  console.error(e.error||e.message);
+  if(typeof toast==="function") toast("A temporary error occurred. Please reset the current simulation.");
+});
 
 </script>
 
